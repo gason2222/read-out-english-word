@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google翻訳データ → CSV変換ツール</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .example {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .download-btn {
+            background: #2196F3;
+        }
+        .download-btn:hover {
+            background: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Google翻訳データ → CSV変換ツール</h1>
+        
+        <div class="section">
+            <h3>📝 方法1: テキスト形式から変換</h3>
+            <p>Google翻訳からコピーしたテキストを貼り付けてください：</p>
+            
+            <div class="example">
+                <strong>入力例：</strong><br>
+                river<br>
+                川<br>
+                mountain<br>
+                山<br>
+                ocean<br>
+                海
+            </div>
+            
+            <textarea id="inputText" placeholder="英単語と日本語訳を交互に入力してください..."></textarea>
+            <br>
+            <button onclick="convertText()">CSVに変換</button>
+            <button onclick="clearInput()">クリア</button>
+        </div>
+
+        <div class="section">
+            <h3>📋 方法2: 手動入力</h3>
+            <p>英単語と日本語訳を手動で入力：</p>
+            
+            <div id="wordInputs">
+                <div class="word-row">
+                    <input type="text" placeholder="英単語" class="english-input">
+                    <input type="text" placeholder="日本語訳" class="japanese-input">
+                    <button onclick="removeRow(this)">削除</button>
+                </div>
+            </div>
+            
+            <button onclick="addRow()">行を追加</button>
+            <button onclick="convertManual()">CSVに変換</button>
+        </div>
+
+        <div class="section">
+            <h3>📄 変換結果</h3>
+            <div id="result" class="result" style="display: none;"></div>
+            <button id="downloadBtn" class="download-btn" onclick="downloadCSV()" style="display: none;">CSVファイルをダウンロード</button>
+        </div>
+
+        <div class="section">
+            <h3>💡 使用方法</h3>
+            <ol>
+                <li><strong>Google翻訳</strong>で保存した翻訳を開く</li>
+                <li>英単語と日本語訳を<strong>コピー&ペースト</strong></li>
+                <li><strong>「CSVに変換」</strong>ボタンをクリック</li>
+                <li><strong>「CSVファイルをダウンロード」</strong>でファイルを保存</li>
+                <li>作成したアプリで<strong>CSVファイルをアップロード</strong></li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let csvData = '';
+
+        function convertText() {
+            const input = document.getElementById('inputText').value.trim();
+            if (!input) {
+                alert('テキストを入力してください。');
+                return;
+            }
+
+            const lines = input.split('\n').filter(line => line.trim());
+            const pairs = [];
+            
+            for (let i = 0; i < lines.length; i += 2) {
+                if (i + 1 < lines.length) {
+                    const english = lines[i].trim();
+                    const japanese = lines[i + 1].trim();
+                    if (english && japanese) {
+                        pairs.push(`${english},${japanese}`);
+                    }
+                }
+            }
+
+            csvData = pairs.join('\n');
+            showResult(csvData);
+        }
+
+        function convertManual() {
+            const rows = document.querySelectorAll('.word-row');
+            const pairs = [];
+
+            rows.forEach(row => {
+                const english = row.querySelector('.english-input').value.trim();
+                const japanese = row.querySelector('.japanese-input').value.trim();
+                
+                if (english && japanese) {
+                    pairs.push(`${english},${japanese}`);
+                }
+            });
+
+            if (pairs.length === 0) {
+                alert('有効な単語ペアを入力してください。');
+                return;
+            }
+
+            csvData = pairs.join('\n');
+            showResult(csvData);
+        }
+
+        function showResult(data) {
+            const resultDiv = document.getElementById('result');
+            const downloadBtn = document.getElementById('downloadBtn');
+            
+            resultDiv.textContent = data;
+            resultDiv.style.display = 'block';
+            downloadBtn.style.display = 'inline-block';
+        }
+
+        function downloadCSV() {
+            if (!csvData) {
+                alert('変換データがありません。');
+                return;
+            }
+
+            const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'my-words.csv';
+            link.click();
+        }
+
+        function addRow() {
+            const container = document.getElementById('wordInputs');
+            const newRow = document.createElement('div');
+            newRow.className = 'word-row';
+            newRow.innerHTML = `
+                <input type="text" placeholder="英単語" class="english-input">
+                <input type="text" placeholder="日本語訳" class="japanese-input">
+                <button onclick="removeRow(this)">削除</button>
+            `;
+            container.appendChild(newRow);
+        }
+
+        function removeRow(button) {
+            button.parentElement.remove();
+        }
+
+        function clearInput() {
+            document.getElementById('inputText').value = '';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('downloadBtn').style.display = 'none';
+            csvData = '';
+        }
+
+        // スタイル追加
+        const style = document.createElement('style');
+        style.textContent = `
+            .word-row {
+                display: flex;
+                gap: 10px;
+                margin: 10px 0;
+                align-items: center;
+            }
+            .word-row input {
+                flex: 1;
+                padding: 8px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+            .word-row button {
+                background: #f44336;
+                color: white;
+                padding: 8px 12px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            .word-row button:hover {
+                background: #d32f2f;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
