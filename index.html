@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英単語音声読み上げアプリ</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>英単語音声読み上げアプリ</h1>
+            <p>CSVファイルをアップロードして英単語と日本語訳を音声で学習しましょう</p>
+        </header>
+
+        <main>
+            <div class="upload-section">
+                <div class="file-upload">
+                    <input type="file" id="csvFile" accept=".csv" />
+                    <label for="csvFile" class="upload-button">
+                        <span class="upload-icon">📁</span>
+                        CSVファイルを選択
+                    </label>
+                </div>
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <p>選択されたファイル: <span id="fileName"></span></p>
+                    <p>単語数: <span id="wordCount"></span></p>
+                </div>
+            </div>
+
+            <div class="controls" id="controls" style="display: none;">
+                <button id="startBtn" class="btn btn-primary">読み上げ開始</button>
+                <button id="pauseBtn" class="btn btn-secondary" disabled>一時停止</button>
+                <button id="stopBtn" class="btn btn-danger" disabled>停止</button>
+                <button id="nextBtn" class="btn btn-info" disabled>次の単語</button>
+            </div>
+
+            <div class="progress-section" id="progressSection" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p class="progress-text" id="progressText">準備中...</p>
+            </div>
+
+            <div class="current-word" id="currentWord" style="display: none;">
+                <div class="word-display">
+                    <h2 id="englishWord"></h2>
+                    <h3 id="japaneseWord"></h3>
+                </div>
+            </div>
+
+            <div class="word-list" id="wordList" style="display: none;">
+                <h3>単語リスト</h3>
+                <div class="word-items" id="wordItems"></div>
+            </div>
+        </main>
+
+        <footer>
+            <p>※ 音声読み上げにはブラウザの音声合成機能を使用します</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
