@@ -11,10 +11,12 @@ class WordReader {
         this.maxSpeechErrors = 3;
         this.mongoManager = new MongoDBManager();
         this.isMongoConnected = false;
+        this.envManager = new EnvironmentManager();
         
         this.initializeElements();
         this.bindEvents();
         this.checkSpeechSupport();
+        this.initializeEnvironment();
     }
 
     initializeElements() {
@@ -47,6 +49,12 @@ class WordReader {
         this.deleteDbBtn = document.getElementById('deleteDbBtn');
         this.dbStatusText = document.getElementById('dbStatusText');
         this.dbWordCount = document.getElementById('dbWordCount');
+        
+        // 環境変数関連の要素
+        this.autoConnectCheckbox = document.getElementById('autoConnectCheckbox');
+        this.saveConfigBtn = document.getElementById('saveConfigBtn');
+        this.loadConfigBtn = document.getElementById('loadConfigBtn');
+        this.resetConfigBtn = document.getElementById('resetConfigBtn');
     }
 
     bindEvents() {
@@ -62,6 +70,12 @@ class WordReader {
         this.uploadToDbBtn.addEventListener('click', () => this.uploadToDatabase());
         this.loadFromDbBtn.addEventListener('click', () => this.loadFromDatabase());
         this.deleteDbBtn.addEventListener('click', () => this.deleteAllFromDatabase());
+        
+        // 環境変数関連のイベント
+        this.saveConfigBtn.addEventListener('click', () => this.saveConfiguration());
+        this.loadConfigBtn.addEventListener('click', () => this.loadConfiguration());
+        this.resetConfigBtn.addEventListener('click', () => this.resetConfiguration());
+        this.autoConnectCheckbox.addEventListener('change', () => this.toggleAutoConnect());
     }
 
     checkSpeechSupport() {
@@ -271,6 +285,96 @@ class WordReader {
         this.currentWord.style.display = 'block';
         this.wordList.style.display = 'block';
         this.databaseSection.style.display = 'block';
+    }
+
+    // 環境変数初期化
+    initializeEnvironment() {
+        // 保存された設定を読み込み
+        this.loadConfiguration();
+        
+        // 自動接続が有効で接続文字列がある場合、自動接続を試行
+        if (this.envManager.getAutoConnect() && this.envManager.hasConnectionString()) {
+            setTimeout(() => {
+                this.autoConnectToMongoDB();
+            }, 1000);
+        }
+    }
+
+    // 設定保存
+    saveConfiguration() {
+        const connectionString = this.mongoConnectionString.value.trim();
+        const autoConnect = this.autoConnectCheckbox.checked;
+        
+        this.envManager.setConnectionString(connectionString);
+        this.envManager.setAutoConnect(autoConnect);
+        
+        this.showDatabaseSuccess('設定を保存しました');
+    }
+
+    // 設定読み込み
+    loadConfiguration() {
+        const connectionString = this.envManager.getConnectionString();
+        const autoConnect = this.envManager.getAutoConnect();
+        
+        this.mongoConnectionString.value = connectionString;
+        this.autoConnectCheckbox.checked = autoConnect;
+        
+        if (connectionString) {
+            this.showDatabaseSuccess('設定を読み込みました');
+        }
+    }
+
+    // 設定リセット
+    resetConfiguration() {
+        if (!confirm('すべての設定をリセットしますか？この操作は元に戻せません。')) {
+            return;
+        }
+        
+        this.envManager.reset();
+        this.mongoConnectionString.value = '';
+        this.autoConnectCheckbox.checked = false;
+        
+        // MongoDB接続も切断
+        if (this.isMongoConnected) {
+            this.disconnectFromMongoDB();
+        }
+        
+        this.showDatabaseSuccess('設定をリセットしました');
+    }
+
+    // 自動接続の切り替え
+    toggleAutoConnect() {
+        const autoConnect = this.autoConnectCheckbox.checked;
+        this.envManager.setAutoConnect(autoConnect);
+        
+        if (autoConnect) {
+            this.showDatabaseSuccess('自動接続が有効になりました');
+        } else {
+            this.showDatabaseSuccess('自動接続が無効になりました');
+        }
+    }
+
+    // 自動接続
+    async autoConnectToMongoDB() {
+        const connectionString = this.envManager.getConnectionString();
+        if (!connectionString) {
+            return;
+        }
+
+        this.mongoConnectionString.value = connectionString;
+        
+        try {
+            const success = await this.mongoManager.connect(connectionString);
+            if (success) {
+                this.isMongoConnected = true;
+                this.updateDatabaseStatus(true);
+                this.updateDatabaseButtons();
+                await this.updateWordCount();
+                this.showDatabaseSuccess('MongoDB Atlasに自動接続しました');
+            }
+        } catch (error) {
+            console.warn('自動接続に失敗:', error);
+        }
     }
 
     // MongoDB操作メソッド

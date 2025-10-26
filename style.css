@@ -276,6 +276,54 @@ main {
     font-size: 14px;
 }
 
+.env-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 5px;
+}
+
+.env-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.env-checkbox input[type="checkbox"] {
+    margin: 0;
+}
+
+.btn-outline {
+    background: transparent;
+    color: #495057;
+    border: 1px solid #ced4da;
+    box-shadow: none;
+}
+
+.btn-outline:hover:not(:disabled) {
+    background: #f8f9fa;
+    transform: translateY(-1px);
+}
+
+.btn-outline-danger {
+    background: transparent;
+    color: #dc3545;
+    border: 1px solid #dc3545;
+    box-shadow: none;
+}
+
+.btn-outline-danger:hover:not(:disabled) {
+    background: #dc3545;
+    color: white;
+    transform: translateY(-1px);
+}
+
 .db-controls {
     display: flex;
     gap: 10px;

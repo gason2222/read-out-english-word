@@ -10,6 +10,27 @@ CSVファイルをアップロードして英単語と日本語訳を音声で�
 - 読み上げの一時停止・再開・停止機能
 - 進捗表示と単語リスト表示
 - レスポンシブデザイン
+- 🗄️ MongoDB Atlas連携（単語データの永続化）
+- ⚙️ 環境変数による設定管理
+- 🔄 自動接続機能
+
+## MongoDB Atlas連携
+
+### データベース設定
+- **Database**: `english-word`
+- **Collection**: `words`
+
+### 環境変数設定
+`.env` ファイルまたは環境変数でMongoDB接続文字列を事前設定可能：
+
+```env
+MONGODB_CONNECTION_STRING=mongodb+srv://username:password@cluster-url/english-word?retryWrites=true&w=majority
+AUTO_CONNECT_MONGODB=true
+MONGODB_DATABASE=english-word
+MONGODB_COLLECTION=words
+```
+
+詳細は `environment-setup-guide.md` を参照してください。
 
 ## 使用方法
 
@@ -31,15 +52,22 @@ ocean,海
 
 - **フロントエンド**: HTML5, CSS3, JavaScript (ES6+)
 - **音声合成**: Web Speech API (SpeechSynthesis)
+- **データベース**: MongoDB Atlas
 - **対応ブラウザ**: Chrome, Firefox, Safari, Edge
 - **ファイル形式**: CSV (UTF-8)
+- **環境変数**: ローカルストレージ + 環境変数
 
 ## ファイル構成
 
 - `index.html` - メインのHTMLファイル
 - `style.css` - スタイルシート
 - `script.js` - JavaScript機能
+- `mongodb-manager.js` - MongoDB操作クラス
+- `environment-manager.js` - 環境変数管理クラス
 - `sample_words.csv` - サンプルCSVファイル
+- `env.example` - 環境変数設定例
+- `mongodb-setup-guide.md` - MongoDB Atlas設定ガイド
+- `environment-setup-guide.md` - 環境変数設定ガイド
 - `README.md` - このファイル
 
 ## 音声読み上げの仕様

@@ -44,6 +44,15 @@
                         <button id="connectBtn" class="btn btn-success">接続</button>
                         <button id="disconnectBtn" class="btn btn-warning" disabled>切断</button>
                     </div>
+                    <div class="env-controls">
+                        <label class="env-checkbox">
+                            <input type="checkbox" id="autoConnectCheckbox">
+                            <span>自動接続を有効にする</span>
+                        </label>
+                        <button id="saveConfigBtn" class="btn btn-outline">設定保存</button>
+                        <button id="loadConfigBtn" class="btn btn-outline">設定読み込み</button>
+                        <button id="resetConfigBtn" class="btn btn-outline-danger">設定リセット</button>
+                    </div>
                     <div class="db-controls">
                         <button id="uploadToDbBtn" class="btn btn-primary" disabled>CSVをDBに登録</button>
                         <button id="loadFromDbBtn" class="btn btn-info" disabled>DBから読み込み</button>
@@ -81,6 +90,7 @@
         </footer>
     </div>
 
+    <script src="environment-manager.js"></script>
     <script src="mongodb-manager.js"></script>
     <script src="script.js"></script>
 </body>
