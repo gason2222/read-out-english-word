@@ -36,6 +36,26 @@
                 <button id="nextBtn" class="btn btn-info" disabled>次の単語</button>
             </div>
 
+            <div class="database-section" id="databaseSection" style="display: none;">
+                <h3>🗄️ データベース操作</h3>
+                <div class="mongo-controls">
+                    <div class="connection-controls">
+                        <input type="text" id="mongoConnectionString" placeholder="MongoDB Atlas接続文字列" class="connection-input">
+                        <button id="connectBtn" class="btn btn-success">接続</button>
+                        <button id="disconnectBtn" class="btn btn-warning" disabled>切断</button>
+                    </div>
+                    <div class="db-controls">
+                        <button id="uploadToDbBtn" class="btn btn-primary" disabled>CSVをDBに登録</button>
+                        <button id="loadFromDbBtn" class="btn btn-info" disabled>DBから読み込み</button>
+                        <button id="deleteDbBtn" class="btn btn-danger" disabled>DB全削除</button>
+                    </div>
+                    <div class="db-status" id="dbStatus">
+                        <span id="dbStatusText">未接続</span>
+                        <span id="dbWordCount"></span>
+                    </div>
+                </div>
+            </div>
+
             <div class="progress-section" id="progressSection" style="display: none;">
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill"></div>
@@ -61,6 +81,7 @@
         </footer>
     </div>
 
+    <script src="mongodb-manager.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

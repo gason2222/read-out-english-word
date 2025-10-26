@@ -9,6 +9,8 @@ class WordReader {
         this.speechSupported = false;
         this.speechErrorCount = 0;
         this.maxSpeechErrors = 3;
+        this.mongoManager = new MongoDBManager();
+        this.isMongoConnected = false;
         
         this.initializeElements();
         this.bindEvents();
@@ -34,6 +36,17 @@ class WordReader {
         this.pauseBtn = document.getElementById('pauseBtn');
         this.stopBtn = document.getElementById('stopBtn');
         this.nextBtn = document.getElementById('nextBtn');
+        
+        // MongoDB関連の要素
+        this.databaseSection = document.getElementById('databaseSection');
+        this.mongoConnectionString = document.getElementById('mongoConnectionString');
+        this.connectBtn = document.getElementById('connectBtn');
+        this.disconnectBtn = document.getElementById('disconnectBtn');
+        this.uploadToDbBtn = document.getElementById('uploadToDbBtn');
+        this.loadFromDbBtn = document.getElementById('loadFromDbBtn');
+        this.deleteDbBtn = document.getElementById('deleteDbBtn');
+        this.dbStatusText = document.getElementById('dbStatusText');
+        this.dbWordCount = document.getElementById('dbWordCount');
     }
 
     bindEvents() {
@@ -42,6 +55,13 @@ class WordReader {
         this.pauseBtn.addEventListener('click', () => this.pauseReading());
         this.stopBtn.addEventListener('click', () => this.stopReading());
         this.nextBtn.addEventListener('click', () => this.nextWord());
+        
+        // MongoDB関連のイベント
+        this.connectBtn.addEventListener('click', () => this.connectToMongoDB());
+        this.disconnectBtn.addEventListener('click', () => this.disconnectFromMongoDB());
+        this.uploadToDbBtn.addEventListener('click', () => this.uploadToDatabase());
+        this.loadFromDbBtn.addEventListener('click', () => this.loadFromDatabase());
+        this.deleteDbBtn.addEventListener('click', () => this.deleteAllFromDatabase());
     }
 
     checkSpeechSupport() {
@@ -250,6 +270,199 @@ class WordReader {
         this.progressSection.style.display = 'block';
         this.currentWord.style.display = 'block';
         this.wordList.style.display = 'block';
+        this.databaseSection.style.display = 'block';
+    }
+
+    // MongoDB操作メソッド
+    async connectToMongoDB() {
+        const connectionString = this.mongoConnectionString.value.trim();
+        if (!connectionString) {
+            alert('MongoDB Atlas接続文字列を入力してください');
+            return;
+        }
+
+        this.connectBtn.disabled = true;
+        this.connectBtn.textContent = '接続中...';
+
+        try {
+            const success = await this.mongoManager.connect(connectionString);
+            if (success) {
+                this.isMongoConnected = true;
+                this.updateDatabaseStatus(true);
+                this.updateDatabaseButtons();
+                await this.updateWordCount();
+                this.showDatabaseSuccess('MongoDB Atlasに接続しました');
+            } else {
+                this.showDatabaseError('MongoDB Atlasへの接続に失敗しました');
+            }
+        } catch (error) {
+            this.showDatabaseError(`接続エラー: ${error.message}`);
+        } finally {
+            this.connectBtn.disabled = false;
+            this.connectBtn.textContent = '接続';
+        }
+    }
+
+    async disconnectFromMongoDB() {
+        try {
+            await this.mongoManager.disconnect();
+            this.isMongoConnected = false;
+            this.updateDatabaseStatus(false);
+            this.updateDatabaseButtons();
+            this.showDatabaseSuccess('MongoDB Atlasから切断しました');
+        } catch (error) {
+            this.showDatabaseError(`切断エラー: ${error.message}`);
+        }
+    }
+
+    async uploadToDatabase() {
+        if (!this.isMongoConnected) {
+            alert('MongoDB Atlasに接続してください');
+            return;
+        }
+
+        if (this.words.length === 0) {
+            alert('CSVファイルを先に読み込んでください');
+            return;
+        }
+
+        this.uploadToDbBtn.disabled = true;
+        this.uploadToDbBtn.textContent = '登録中...';
+
+        try {
+            // CSVデータを文字列に変換
+            const csvData = this.words.map(word => `${word.english},${word.japanese}`).join('\n');
+            
+            const count = await this.mongoManager.uploadWordsFromCSV(csvData);
+            await this.updateWordCount();
+            this.showDatabaseSuccess(`${count}個の単語をデータベースに登録しました`);
+        } catch (error) {
+            this.showDatabaseError(`登録エラー: ${error.message}`);
+        } finally {
+            this.uploadToDbBtn.disabled = false;
+            this.uploadToDbBtn.textContent = 'CSVをDBに登録';
+        }
+    }
+
+    async loadFromDatabase() {
+        if (!this.isMongoConnected) {
+            alert('MongoDB Atlasに接続してください');
+            return;
+        }
+
+        this.loadFromDbBtn.disabled = true;
+        this.loadFromDbBtn.textContent = '読み込み中...';
+
+        try {
+            const dbWords = await this.mongoManager.getAllWords();
+            
+            if (dbWords.length === 0) {
+                this.showDatabaseError('データベースに単語がありません');
+                return;
+            }
+
+            // データベースの単語をアプリの形式に変換
+            this.words = dbWords.map(word => ({
+                english: word.english,
+                japanese: word.japanese
+            }));
+
+            this.displayFileInfo('データベース', this.words.length);
+            this.showControls();
+            this.displayWordList();
+            this.showDatabaseSuccess(`${this.words.length}個の単語をデータベースから読み込みました`);
+        } catch (error) {
+            this.showDatabaseError(`読み込みエラー: ${error.message}`);
+        } finally {
+            this.loadFromDbBtn.disabled = false;
+            this.loadFromDbBtn.textContent = 'DBから読み込み';
+        }
+    }
+
+    async deleteAllFromDatabase() {
+        if (!this.isMongoConnected) {
+            alert('MongoDB Atlasに接続してください');
+            return;
+        }
+
+        if (!confirm('データベースのすべての単語を削除しますか？この操作は元に戻せません。')) {
+            return;
+        }
+
+        this.deleteDbBtn.disabled = true;
+        this.deleteDbBtn.textContent = '削除中...';
+
+        try {
+            const count = await this.mongoManager.deleteAllWords();
+            await this.updateWordCount();
+            this.showDatabaseSuccess(`${count}個の単語を削除しました`);
+        } catch (error) {
+            this.showDatabaseError(`削除エラー: ${error.message}`);
+        } finally {
+            this.deleteDbBtn.disabled = false;
+            this.deleteDbBtn.textContent = 'DB全削除';
+        }
+    }
+
+    updateDatabaseStatus(connected) {
+        const statusElement = document.getElementById('dbStatus');
+        if (connected) {
+            this.dbStatusText.textContent = '接続済み';
+            statusElement.className = 'db-status connected';
+        } else {
+            this.dbStatusText.textContent = '未接続';
+            statusElement.className = 'db-status disconnected';
+            this.dbWordCount.textContent = '';
+        }
+    }
+
+    updateDatabaseButtons() {
+        const connected = this.isMongoConnected;
+        this.connectBtn.disabled = connected;
+        this.disconnectBtn.disabled = !connected;
+        this.uploadToDbBtn.disabled = !connected;
+        this.loadFromDbBtn.disabled = !connected;
+        this.deleteDbBtn.disabled = !connected;
+    }
+
+    async updateWordCount() {
+        if (this.isMongoConnected) {
+            try {
+                const count = await this.mongoManager.getWordCount();
+                this.dbWordCount.textContent = `(${count}単語)`;
+            } catch (error) {
+                console.error('単語数取得エラー:', error);
+            }
+        }
+    }
+
+    showDatabaseSuccess(message) {
+        this.showDatabaseMessage(message, 'success');
+    }
+
+    showDatabaseError(message) {
+        this.showDatabaseMessage(message, 'error');
+    }
+
+    showDatabaseMessage(message, type) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `database-message ${type}`;
+        messageDiv.innerHTML = `
+            <div class="message-content">
+                <h4>${type === 'success' ? '✅' : '❌'} ${message}</h4>
+                <button onclick="this.parentElement.parentElement.remove()">閉じる</button>
+            </div>
+        `;
+        
+        const container = document.querySelector('.container');
+        container.insertBefore(messageDiv, document.querySelector('main'));
+        
+        // 3秒後に自動で非表示
+        setTimeout(() => {
+            if (messageDiv.parentElement) {
+                messageDiv.remove();
+            }
+        }, 3000);
     }
 
     displayWordList() {

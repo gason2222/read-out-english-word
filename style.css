@@ -239,6 +239,171 @@ main {
     font-size: 0.9rem;
 }
 
+/* Database Section Styles */
+.database-section {
+    margin: 30px 0;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 10px;
+    border: 1px solid #dee2e6;
+}
+
+.database-section h3 {
+    margin: 0 0 20px 0;
+    color: #495057;
+    text-align: center;
+}
+
+.mongo-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.connection-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.connection-input {
+    flex: 1;
+    min-width: 300px;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.db-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.db-status {
+    text-align: center;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.db-status.connected {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+
+.db-status.disconnected {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}
+
+#dbWordCount {
+    margin-left: 10px;
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+.btn-success {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    color: white;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.btn-warning {
+    background: linear-gradient(45deg, #ffc107, #fd7e14);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+}
+
+.btn-success:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.btn-warning:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+/* Database Message Styles */
+.database-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    max-width: 400px;
+    animation: slideInRight 0.5s ease-out;
+}
+
+.database-message.success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.database-message.error {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+
+.database-message .message-content {
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.database-message h4 {
+    margin: 0 0 10px 0;
+    font-size: 1rem;
+}
+
+.database-message button {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.database-message button:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@media (max-width: 600px) {
+    .connection-controls {
+        flex-direction: column;
+    }
+    
+    .connection-input {
+        min-width: 100%;
+    }
+    
+    .db-controls {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .db-controls .btn {
+        width: 100%;
+        max-width: 200px;
+    }
+}
+
 footer {
     text-align: center;
     margin-top: 30px;
