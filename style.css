@@ -267,21 +267,26 @@ footer {
     box-shadow: 0 4px 15px rgba(158, 158, 158, 0.3);
 }
 
-.error-content, .warning-content, .fallback-content {
+.speech-success {
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.error-content, .warning-content, .fallback-content, .success-content {
     text-align: center;
 }
 
-.error-content h3, .warning-content h3, .fallback-content h3 {
+.error-content h3, .warning-content h3, .fallback-content h3, .success-content h3 {
     margin: 0 0 15px 0;
     font-size: 1.3rem;
 }
 
-.error-content p, .warning-content p, .fallback-content p {
+.error-content p, .warning-content p, .fallback-content p, .success-content p {
     margin: 10px 0;
     line-height: 1.5;
 }
 
-.error-content button, .warning-content button, .fallback-content button {
+.error-content button, .warning-content button, .fallback-content button, .success-content button {
     background: rgba(255, 255, 255, 0.2);
     color: white;
     border: 2px solid rgba(255, 255, 255, 0.3);
@@ -293,9 +298,26 @@ footer {
     transition: all 0.3s ease;
 }
 
-.error-content button:hover, .warning-content button:hover, .fallback-content button:hover {
+.error-content button:hover, .warning-content button:hover, .fallback-content button:hover, .success-content button:hover {
     background: rgba(255, 255, 255, 0.3);
     border-color: rgba(255, 255, 255, 0.5);
+}
+
+.warning-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.retry-btn {
+    background: rgba(76, 175, 80, 0.8) !important;
+    border-color: rgba(76, 175, 80, 0.9) !important;
+}
+
+.retry-btn:hover {
+    background: rgba(76, 175, 80, 1) !important;
+    border-color: rgba(76, 175, 80, 1) !important;
 }
 
 @keyframes slideIn {
