@@ -32,6 +32,30 @@ MONGODB_COLLECTION=words
 
 詳細は `environment-setup-guide.md` を参照してください。
 
+## MongoDB Atlas Data API設定
+
+### クイックセットアップ
+
+**Cluster Name**: `image2diary`
+
+#### Windows
+```powershell
+.\setup-mongodb-api.ps1
+```
+
+#### Linux/Mac
+```bash
+chmod +x setup-mongodb-api.sh
+./setup-mongodb-api.sh
+```
+
+#### 手動設定
+1. MongoDB AtlasダッシュボードでData APIを有効化
+2. API Keyを生成
+3. `.env`ファイルに設定を記述
+
+詳細は `mongodb-api-key-getting-started.md` を参照してください。
+
 ## Netlifyデプロイ設定
 
 ### 環境変数の設定
@@ -84,8 +108,12 @@ ocean,海
 - `environment-manager.js` - 環境変数管理クラス
 - `sample_words.csv` - サンプルCSVファイル
 - `env.example` - 環境変数設定例
+- `env.template` - 環境変数設定テンプレート
+- `setup-mongodb-api.sh` - Linux/Mac用設定スクリプト
+- `setup-mongodb-api.ps1` - Windows用設定スクリプト
 - `mongodb-setup-guide.md` - MongoDB Atlas設定ガイド
 - `environment-setup-guide.md` - 環境変数設定ガイド
+- `mongodb-api-key-getting-started.md` - Data API設定ガイド
 - `netlify-mongodb-setup.md` - Netlify設定ガイド
 - `mongodb-driver-troubleshooting.md` - MongoDBドライバーエラー解決ガイド
 - `netlify.toml` - Netlify設定ファイル
