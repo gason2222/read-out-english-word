@@ -295,10 +295,16 @@ class WordReader {
         this.loadConfiguration();
         
         // 自動接続が有効で接続文字列がある場合、自動接続を試行
-        if (this.envManager.getAutoConnect() && this.envManager.hasConnectionString()) {
-            setTimeout(() => {
-                this.autoConnectToMongoDB();
-            }, 1000);
+        if (this.envManager.getAutoConnect()) {
+            if (this.envManager.hasConnectionString()) {
+                setTimeout(() => {
+                    this.autoConnectToMongoDB();
+                }, 1000);
+            } else if (this.envManager.hasDataApiConfig()) {
+                setTimeout(() => {
+                    this.autoConnectWithDataAPI();
+                }, 1000);
+            }
         }
     }
 
@@ -369,6 +375,7 @@ class WordReader {
             const success = await this.mongoManager.connect(connectionString);
             if (success) {
                 this.isMongoConnected = true;
+                this.useDataAPI = false;
                 this.updateDatabaseStatus(true);
                 this.updateDatabaseButtons();
                 await this.updateWordCount();
@@ -376,6 +383,28 @@ class WordReader {
             }
         } catch (error) {
             console.warn('自動接続に失敗:', error);
+        }
+    }
+
+    // Data API自動接続
+    async autoConnectWithDataAPI() {
+        const apiKey = this.envManager.getDataApiKey();
+        const clusterName = this.envManager.getClusterName();
+        
+        if (!apiKey || !clusterName) {
+            return;
+        }
+
+        try {
+            await this.dataAPIManager.connect(apiKey, clusterName);
+            this.isMongoConnected = true;
+            this.useDataAPI = true;
+            this.updateDatabaseStatus(true);
+            this.updateDatabaseButtons();
+            await this.updateWordCount();
+            this.showDatabaseSuccess('MongoDB Atlas Data APIに自動接続しました');
+        } catch (error) {
+            console.warn('Data API自動接続に失敗:', error);
         }
     }
 
@@ -640,6 +669,8 @@ class WordReader {
         const clusterName = prompt('MongoDB Atlas Cluster Nameを入力してください:');
         
         if (apiKey && clusterName) {
+            this.envManager.setDataApiKey(apiKey);
+            this.envManager.setClusterName(clusterName);
             this.connectWithDataAPI(apiKey, clusterName);
         }
     }
