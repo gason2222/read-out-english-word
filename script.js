@@ -10,7 +10,9 @@ class WordReader {
         this.speechErrorCount = 0;
         this.maxSpeechErrors = 3;
         this.mongoManager = new MongoDBManager();
+        this.dataAPIManager = new MongoDBDataAPIManager();
         this.isMongoConnected = false;
+        this.useDataAPI = false;
         this.envManager = new EnvironmentManager();
         
         this.initializeElements();
@@ -389,34 +391,38 @@ class WordReader {
         this.connectBtn.textContent = '接続中...';
 
         try {
+            // まず通常のMongoDBドライバーで接続を試行
             const success = await this.mongoManager.connect(connectionString);
             if (success) {
                 this.isMongoConnected = true;
+                this.useDataAPI = false;
                 this.updateDatabaseStatus(true);
                 this.updateDatabaseButtons();
                 await this.updateWordCount();
-                this.showDatabaseSuccess('MongoDB Atlasに接続しました');
+                this.showDatabaseSuccess('MongoDB Atlasに接続しました（ドライバー使用）');
             } else {
                 this.showDatabaseError('MongoDB Atlasへの接続に失敗しました');
             }
         } catch (error) {
             console.error('MongoDB接続エラー:', error);
             
-            // より詳細なエラーメッセージを表示
-            let errorMessage = 'MongoDB Atlasへの接続に失敗しました';
-            
-            if (error.message.includes('driver')) {
-                errorMessage = 'MongoDBドライバーの読み込みに失敗しました。ネットワーク接続を確認してください。';
-                this.showDriverError();
-            } else if (error.message.includes('connection')) {
-                errorMessage = 'MongoDB Atlasへの接続に失敗しました。接続文字列とネットワーク設定を確認してください。';
-            } else if (error.message.includes('authentication')) {
-                errorMessage = '認証に失敗しました。ユーザー名とパスワードを確認してください。';
-            } else if (error.message.includes('network')) {
-                errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
+            // ドライバー読み込みエラーの場合、Data APIを試行
+            if (error.message.includes('driver') || error.message.includes('CDN')) {
+                this.showDriverErrorWithDataAPIOption();
+            } else {
+                // より詳細なエラーメッセージを表示
+                let errorMessage = 'MongoDB Atlasへの接続に失敗しました';
+                
+                if (error.message.includes('connection')) {
+                    errorMessage = 'MongoDB Atlasへの接続に失敗しました。接続文字列とネットワーク設定を確認してください。';
+                } else if (error.message.includes('authentication')) {
+                    errorMessage = '認証に失敗しました。ユーザー名とパスワードを確認してください。';
+                } else if (error.message.includes('network')) {
+                    errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
+                }
+                
+                this.showDatabaseError(errorMessage);
             }
-            
-            this.showDatabaseError(errorMessage);
         } finally {
             this.connectBtn.disabled = false;
             this.connectBtn.textContent = '接続';
@@ -453,7 +459,12 @@ class WordReader {
             // CSVデータを文字列に変換
             const csvData = this.words.map(word => `${word.english},${word.japanese}`).join('\n');
             
-            const count = await this.mongoManager.uploadWordsFromCSV(csvData);
+            let count;
+            if (this.useDataAPI) {
+                count = await this.dataAPIManager.uploadWordsFromCSV(csvData);
+            } else {
+                count = await this.mongoManager.uploadWordsFromCSV(csvData);
+            }
             await this.updateWordCount();
             this.showDatabaseSuccess(`${count}個の単語をデータベースに登録しました`);
         } catch (error) {
@@ -474,7 +485,12 @@ class WordReader {
         this.loadFromDbBtn.textContent = '読み込み中...';
 
         try {
-            const dbWords = await this.mongoManager.getAllWords();
+            let dbWords;
+            if (this.useDataAPI) {
+                dbWords = await this.dataAPIManager.getAllWords();
+            } else {
+                dbWords = await this.mongoManager.getAllWords();
+            }
             
             if (dbWords.length === 0) {
                 this.showDatabaseError('データベースに単語がありません');
@@ -585,20 +601,20 @@ class WordReader {
         }, 3000);
     }
 
-    showDriverError() {
+    showDriverErrorWithDataAPIOption() {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'database-message error driver-error';
         messageDiv.innerHTML = `
             <div class="message-content">
                 <h4>⚠️ MongoDBドライバー読み込みエラー</h4>
-                <p>MongoDBドライバーの読み込みに失敗しました。以下の解決方法をお試しください：</p>
+                <p>MongoDBドライバーの読み込みに失敗しました。代替手段としてMongoDB Atlas Data APIを使用できます：</p>
                 <ul>
-                    <li>ネットワーク接続を確認してください</li>
-                    <li>ブラウザのセキュリティ設定を確認してください</li>
-                    <li>別のブラウザで試してください</li>
-                    <li>ページを再読み込みしてください</li>
+                    <li>MongoDB Atlas Data APIを使用（推奨）</li>
+                    <li>ローカルファイルを配置</li>
+                    <li>別のブラウザで試行</li>
                 </ul>
                 <div class="driver-error-actions">
+                    <button onclick="window.wordReader.showDataAPISetup()" class="btn btn-outline">Data API設定</button>
                     <button onclick="location.reload()" class="btn btn-outline">ページ再読み込み</button>
                     <button onclick="this.parentElement.parentElement.parentElement.remove()" class="btn btn-outline">閉じる</button>
                 </div>
@@ -611,12 +627,42 @@ class WordReader {
         const container = document.querySelector('.container');
         container.insertBefore(messageDiv, document.querySelector('main'));
         
-        // 10秒後に自動で非表示
+        // 15秒後に自動で非表示
         setTimeout(() => {
             if (messageDiv.parentElement) {
                 messageDiv.remove();
             }
-        }, 10000);
+        }, 15000);
+    }
+
+    showDataAPISetup() {
+        const apiKey = prompt('MongoDB Atlas Data API Keyを入力してください:');
+        const clusterName = prompt('MongoDB Atlas Cluster Nameを入力してください:');
+        
+        if (apiKey && clusterName) {
+            this.connectWithDataAPI(apiKey, clusterName);
+        }
+    }
+
+    async connectWithDataAPI(apiKey, clusterName) {
+        this.connectBtn.disabled = true;
+        this.connectBtn.textContent = 'Data API接続中...';
+
+        try {
+            await this.dataAPIManager.connect(apiKey, clusterName);
+            this.isMongoConnected = true;
+            this.useDataAPI = true;
+            this.updateDatabaseStatus(true);
+            this.updateDatabaseButtons();
+            await this.updateWordCount();
+            this.showDatabaseSuccess('MongoDB Atlas Data APIに接続しました');
+        } catch (error) {
+            console.error('Data API接続エラー:', error);
+            this.showDatabaseError(`Data API接続エラー: ${error.message}`);
+        } finally {
+            this.connectBtn.disabled = false;
+            this.connectBtn.textContent = '接続';
+        }
     }
 
     displayWordList() {
