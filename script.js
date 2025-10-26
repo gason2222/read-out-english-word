@@ -6,9 +6,13 @@ class WordReader {
         this.isPaused = false;
         this.speechSynthesis = window.speechSynthesis;
         this.currentUtterance = null;
+        this.speechSupported = false;
+        this.speechErrorCount = 0;
+        this.maxSpeechErrors = 3;
         
         this.initializeElements();
         this.bindEvents();
+        this.checkSpeechSupport();
     }
 
     initializeElements() {
@@ -38,6 +42,74 @@ class WordReader {
         this.pauseBtn.addEventListener('click', () => this.pauseReading());
         this.stopBtn.addEventListener('click', () => this.stopReading());
         this.nextBtn.addEventListener('click', () => this.nextWord());
+    }
+
+    checkSpeechSupport() {
+        if (!('speechSynthesis' in window)) {
+            this.showSpeechError('お使いのブラウザは音声合成機能をサポートしていません。Chrome、Firefox、Safariなどの最新ブラウザをご利用ください。');
+            return;
+        }
+
+        // 音声合成の初期化を試行
+        try {
+            // 空の音声を生成して初期化をテスト
+            const testUtterance = new SpeechSynthesisUtterance('');
+            testUtterance.volume = 0;
+            testUtterance.rate = 10;
+            testUtterance.pitch = 0;
+            
+            testUtterance.onerror = (event) => {
+                console.warn('Speech synthesis test failed:', event.error);
+                this.speechSupported = false;
+                this.showSpeechWarning();
+            };
+            
+            testUtterance.onend = () => {
+                this.speechSupported = true;
+                console.log('Speech synthesis is working properly');
+            };
+            
+            this.speechSynthesis.speak(testUtterance);
+            
+            // 3秒後にタイムアウト
+            setTimeout(() => {
+                if (!this.speechSupported) {
+                    this.showSpeechWarning();
+                }
+            }, 3000);
+            
+        } catch (error) {
+            console.error('Speech synthesis initialization error:', error);
+            this.speechSupported = false;
+            this.showSpeechWarning();
+        }
+    }
+
+    showSpeechError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'speech-error';
+        errorDiv.innerHTML = `
+            <div class="error-content">
+                <h3>⚠️ 音声機能エラー</h3>
+                <p>${message}</p>
+                <p>テキスト表示モードで学習を続けることができます。</p>
+            </div>
+        `;
+        document.querySelector('.container').insertBefore(errorDiv, document.querySelector('main'));
+    }
+
+    showSpeechWarning() {
+        const warningDiv = document.createElement('div');
+        warningDiv.className = 'speech-warning';
+        warningDiv.innerHTML = `
+            <div class="warning-content">
+                <h3>⚠️ 音声機能の警告</h3>
+                <p>音声合成に問題が発生する可能性があります。Linux環境では特に注意が必要です。</p>
+                <p>音声が再生されない場合は、テキスト表示で学習を続けてください。</p>
+                <button onclick="this.parentElement.parentElement.style.display='none'">了解</button>
+            </div>
+        `;
+        document.querySelector('.container').insertBefore(warningDiv, document.querySelector('main'));
     }
 
     handleFileUpload(event) {
@@ -218,23 +290,72 @@ class WordReader {
     }
 
     speak(text, lang, onEnd) {
+        // 音声合成がサポートされていない場合、テキスト表示のみ
+        if (!this.speechSupported || this.speechErrorCount >= this.maxSpeechErrors) {
+            console.log(`Text display only: ${text}`);
+            if (onEnd) {
+                setTimeout(onEnd, 1000); // 1秒待機してから次へ
+            }
+            return;
+        }
+
         if (this.currentUtterance) {
             this.speechSynthesis.cancel();
         }
 
-        this.currentUtterance = new SpeechSynthesisUtterance(text);
-        this.currentUtterance.lang = lang;
-        this.currentUtterance.rate = 0.8;
-        this.currentUtterance.pitch = 1;
-        this.currentUtterance.volume = 1;
+        try {
+            this.currentUtterance = new SpeechSynthesisUtterance(text);
+            this.currentUtterance.lang = lang;
+            this.currentUtterance.rate = 0.8;
+            this.currentUtterance.pitch = 1;
+            this.currentUtterance.volume = 1;
 
-        this.currentUtterance.onend = onEnd;
-        this.currentUtterance.onerror = (event) => {
-            console.error('Speech synthesis error:', event.error);
-            if (onEnd) onEnd();
-        };
+            this.currentUtterance.onend = () => {
+                this.speechErrorCount = 0; // 成功時はエラーカウントをリセット
+                if (onEnd) onEnd();
+            };
 
-        this.speechSynthesis.speak(this.currentUtterance);
+            this.currentUtterance.onerror = (event) => {
+                console.error('Speech synthesis error:', event.error);
+                this.speechErrorCount++;
+                
+                if (this.speechErrorCount >= this.maxSpeechErrors) {
+                    this.showSpeechFallback();
+                }
+                
+                // エラーが発生しても次の処理を続行
+                if (onEnd) {
+                    setTimeout(onEnd, 1000);
+                }
+            };
+
+            this.currentUtterance.onstart = () => {
+                console.log(`Speaking: ${text}`);
+            };
+
+            this.speechSynthesis.speak(this.currentUtterance);
+            
+        } catch (error) {
+            console.error('Speech synthesis exception:', error);
+            this.speechErrorCount++;
+            if (onEnd) {
+                setTimeout(onEnd, 1000);
+            }
+        }
+    }
+
+    showSpeechFallback() {
+        const fallbackDiv = document.createElement('div');
+        fallbackDiv.className = 'speech-fallback';
+        fallbackDiv.innerHTML = `
+            <div class="fallback-content">
+                <h3>🔇 音声機能が無効になりました</h3>
+                <p>音声合成でエラーが続発したため、テキスト表示モードに切り替えました。</p>
+                <p>学習は継続できますが、音声は再生されません。</p>
+                <button onclick="this.parentElement.parentElement.style.display='none'">了解</button>
+            </div>
+        `;
+        document.querySelector('.container').insertBefore(fallbackDiv, document.querySelector('main'));
     }
 
     displayCurrentWord(word) {
@@ -253,8 +374,3 @@ class WordReader {
 document.addEventListener('DOMContentLoaded', () => {
     new WordReader();
 });
-
-// ブラウザの音声合成サポートチェック
-if (!('speechSynthesis' in window)) {
-    alert('お使いのブラウザは音声合成機能をサポートしていません。Chrome、Firefox、Safariなどの最新ブラウザをご利用ください。');
-}
