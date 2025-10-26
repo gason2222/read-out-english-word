@@ -32,6 +32,24 @@ MONGODB_COLLECTION=words
 
 詳細は `environment-setup-guide.md` を参照してください。
 
+## Netlifyデプロイ設定
+
+### 環境変数の設定
+Netlifyダッシュボードで以下の環境変数を設定：
+
+```
+MONGODB_CONNECTION_STRING=mongodb+srv://username:password@cluster-url/english-word?retryWrites=true&w=majority
+AUTO_CONNECT_MONGODB=true
+MONGODB_DATABASE=english-word
+MONGODB_COLLECTION=words
+```
+
+### ビルド設定
+- **Build command**: 空のまま（静的ファイルデプロイ）
+- **Publish directory**: `.` (ルートディレクトリ)
+
+詳細は `netlify-mongodb-setup.md` を参照してください。
+
 ## 使用方法
 
 1. `index.html` をブラウザで開く
@@ -68,6 +86,9 @@ ocean,海
 - `env.example` - 環境変数設定例
 - `mongodb-setup-guide.md` - MongoDB Atlas設定ガイド
 - `environment-setup-guide.md` - 環境変数設定ガイド
+- `netlify-mongodb-setup.md` - Netlify設定ガイド
+- `mongodb-driver-troubleshooting.md` - MongoDBドライバーエラー解決ガイド
+- `netlify.toml` - Netlify設定ファイル
 - `README.md` - このファイル
 
 ## 音声読み上げの仕様
