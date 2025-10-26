@@ -16,6 +16,11 @@ class MongoDBManager {
                 await this.loadMongoDBDriver();
             }
 
+            // ドライバーが読み込まれているか再確認
+            if (typeof MongoClient === 'undefined') {
+                throw new Error('MongoDB driverが読み込まれませんでした');
+            }
+
             this.client = new MongoClient(connectionString);
             await this.client.connect();
             
@@ -28,22 +33,56 @@ class MongoDBManager {
         } catch (error) {
             console.error('MongoDB接続エラー:', error);
             this.isConnected = false;
-            return false;
+            
+            // より詳細なエラーメッセージを提供
+            if (error.message.includes('driver')) {
+                throw new Error('MongoDBドライバーの読み込みに失敗しました。ネットワーク接続を確認してください。');
+            } else if (error.message.includes('connection')) {
+                throw new Error('MongoDB Atlasへの接続に失敗しました。接続文字列とネットワーク設定を確認してください。');
+            } else {
+                throw error;
+            }
         }
     }
 
     async loadMongoDBDriver() {
         return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/mongodb@6.0.0/dist/browser.umd.js';
-            script.onload = () => {
-                console.log('MongoDB driver loaded');
+            // 既に読み込まれているかチェック
+            if (typeof MongoClient !== 'undefined') {
                 resolve();
+                return;
+            }
+
+            // 複数のCDNを試行
+            const cdnUrls = [
+                'https://unpkg.com/mongodb@6.0.0/dist/browser.umd.js',
+                'https://cdn.jsdelivr.net/npm/mongodb@6.0.0/dist/browser.umd.js',
+                'https://cdnjs.cloudflare.com/ajax/libs/mongodb/6.0.0/browser.umd.js'
+            ];
+
+            let currentIndex = 0;
+
+            const tryLoadScript = () => {
+                if (currentIndex >= cdnUrls.length) {
+                    reject(new Error('すべてのCDNからMongoDB driverの読み込みに失敗しました'));
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.src = cdnUrls[currentIndex];
+                script.onload = () => {
+                    console.log(`MongoDB driver loaded from: ${cdnUrls[currentIndex]}`);
+                    resolve();
+                };
+                script.onerror = () => {
+                    console.warn(`Failed to load MongoDB driver from: ${cdnUrls[currentIndex]}`);
+                    currentIndex++;
+                    tryLoadScript();
+                };
+                document.head.appendChild(script);
             };
-            script.onerror = () => {
-                reject(new Error('MongoDB driverの読み込みに失敗しました'));
-            };
-            document.head.appendChild(script);
+
+            tryLoadScript();
         });
     }
 

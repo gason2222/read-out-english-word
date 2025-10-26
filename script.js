@@ -400,7 +400,23 @@ class WordReader {
                 this.showDatabaseError('MongoDB Atlasへの接続に失敗しました');
             }
         } catch (error) {
-            this.showDatabaseError(`接続エラー: ${error.message}`);
+            console.error('MongoDB接続エラー:', error);
+            
+            // より詳細なエラーメッセージを表示
+            let errorMessage = 'MongoDB Atlasへの接続に失敗しました';
+            
+            if (error.message.includes('driver')) {
+                errorMessage = 'MongoDBドライバーの読み込みに失敗しました。ネットワーク接続を確認してください。';
+                this.showDriverError();
+            } else if (error.message.includes('connection')) {
+                errorMessage = 'MongoDB Atlasへの接続に失敗しました。接続文字列とネットワーク設定を確認してください。';
+            } else if (error.message.includes('authentication')) {
+                errorMessage = '認証に失敗しました。ユーザー名とパスワードを確認してください。';
+            } else if (error.message.includes('network')) {
+                errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
+            }
+            
+            this.showDatabaseError(errorMessage);
         } finally {
             this.connectBtn.disabled = false;
             this.connectBtn.textContent = '接続';
@@ -567,6 +583,40 @@ class WordReader {
                 messageDiv.remove();
             }
         }, 3000);
+    }
+
+    showDriverError() {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'database-message error driver-error';
+        messageDiv.innerHTML = `
+            <div class="message-content">
+                <h4>⚠️ MongoDBドライバー読み込みエラー</h4>
+                <p>MongoDBドライバーの読み込みに失敗しました。以下の解決方法をお試しください：</p>
+                <ul>
+                    <li>ネットワーク接続を確認してください</li>
+                    <li>ブラウザのセキュリティ設定を確認してください</li>
+                    <li>別のブラウザで試してください</li>
+                    <li>ページを再読み込みしてください</li>
+                </ul>
+                <div class="driver-error-actions">
+                    <button onclick="location.reload()" class="btn btn-outline">ページ再読み込み</button>
+                    <button onclick="this.parentElement.parentElement.parentElement.remove()" class="btn btn-outline">閉じる</button>
+                </div>
+                <p class="driver-error-note">
+                    <small>詳細な解決方法は <code>mongodb-driver-troubleshooting.md</code> を参照してください</small>
+                </p>
+            </div>
+        `;
+        
+        const container = document.querySelector('.container');
+        container.insertBefore(messageDiv, document.querySelector('main'));
+        
+        // 10秒後に自動で非表示
+        setTimeout(() => {
+            if (messageDiv.parentElement) {
+                messageDiv.remove();
+            }
+        }, 10000);
     }
 
     displayWordList() {
