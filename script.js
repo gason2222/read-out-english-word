@@ -54,7 +54,6 @@ class WordReader {
         try {
             // 音声合成オブジェクトの存在とメソッドの確認
             if (this.speechSynthesis && typeof this.speechSynthesis.speak === 'function') {
-                this.speechSupported = true;
                 console.log('Speech synthesis is available');
                 
                 // 音声リストの取得を試行（非同期）
@@ -72,14 +71,58 @@ class WordReader {
 
     loadVoices() {
         // 音声リストの読み込み
-        if (this.speechSynthesis.getVoices().length > 0) {
-            console.log('Voices loaded:', this.speechSynthesis.getVoices().length);
+        const voices = this.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+            console.log('Voices loaded:', voices.length);
+            this.speechSupported = true;
+            this.availableVoices = voices;
         } else {
             // 音声リストが空の場合は、イベントを待つ
             this.speechSynthesis.addEventListener('voiceschanged', () => {
-                console.log('Voices loaded after event:', this.speechSynthesis.getVoices().length);
+                const voices = this.speechSynthesis.getVoices();
+                console.log('Voices loaded after event:', voices.length);
+                
+                if (voices.length > 0) {
+                    this.speechSupported = true;
+                    this.availableVoices = voices;
+                    console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
+                } else {
+                    console.warn('No voices available - speech synthesis may not work properly');
+                    this.speechSupported = false;
+                    this.showLinuxVoiceWarning();
+                }
             });
+            
+            // タイムアウト設定（5秒）
+            setTimeout(() => {
+                if (!this.speechSupported) {
+                    console.warn('Voice loading timeout - proceeding with limited functionality');
+                    this.speechSupported = true; // 音声がなくてもテキスト表示は可能
+                }
+            }, 5000);
         }
+    }
+
+    showLinuxVoiceWarning() {
+        const warningDiv = document.createElement('div');
+        warningDiv.className = 'speech-warning';
+        warningDiv.innerHTML = `
+            <div class="warning-content">
+                <h3>⚠️ Linux環境での音声合成警告</h3>
+                <p>音声エンジンが見つかりません。Linux環境では以下の設定が必要な場合があります：</p>
+                <ul style="text-align: left; margin: 10px 0;">
+                    <li>espeak-ng のインストール: <code>sudo apt install espeak-ng</code></li>
+                    <li>festival のインストール: <code>sudo apt install festival</code></li>
+                    <li>Chrome の音声設定確認</li>
+                </ul>
+                <p>テキスト表示モードで学習を続けることができます。</p>
+                <div class="warning-buttons">
+                    <button onclick="this.parentElement.parentElement.parentElement.style.display='none'">了解</button>
+                    <button onclick="window.wordReader.retrySpeechSupport()" class="retry-btn">音声を再試行</button>
+                </div>
+            </div>
+        `;
+        document.querySelector('.container').insertBefore(warningDiv, document.querySelector('main'));
     }
 
     showSpeechError(message) {
@@ -344,25 +387,35 @@ class WordReader {
             return;
         }
 
-        if (this.currentUtterance) {
-            this.speechSynthesis.cancel();
-        }
+        // Stack Overflowの解決策: 必ずcancel()を呼ぶ
+        this.speechSynthesis.cancel();
 
         try {
             this.currentUtterance = new SpeechSynthesisUtterance(text);
             this.currentUtterance.lang = lang;
-            this.currentUtterance.rate = 0.8;
+            
+            // レートを2以下に制限（Chromeの制限）
+            this.currentUtterance.rate = Math.min(0.8, 2);
             this.currentUtterance.pitch = 1;
             this.currentUtterance.volume = 1;
 
-            // タイムアウト設定（10秒）
+            // 利用可能な音声を設定
+            if (this.availableVoices && this.availableVoices.length > 0) {
+                const voice = this.selectBestVoice(lang);
+                if (voice) {
+                    this.currentUtterance.voice = voice;
+                    console.log(`Using voice: ${voice.name} (${voice.lang})`);
+                }
+            }
+
+            // タイムアウト設定（8秒）
             const timeoutId = setTimeout(() => {
                 console.warn('Speech synthesis timeout');
                 this.speechSynthesis.cancel();
                 if (onEnd) {
                     setTimeout(onEnd, 1000);
                 }
-            }, 10000);
+            }, 8000);
 
             this.currentUtterance.onend = () => {
                 clearTimeout(timeoutId);
@@ -390,7 +443,7 @@ class WordReader {
                 console.log(`Speaking: ${text}`);
             };
 
-            // 音声合成の実行
+            // 音声合成の実行（Stack Overflowの解決策に従って）
             this.speechSynthesis.speak(this.currentUtterance);
             
         } catch (error) {
@@ -400,6 +453,22 @@ class WordReader {
                 setTimeout(onEnd, 1000);
             }
         }
+    }
+
+    selectBestVoice(lang) {
+        if (!this.availableVoices || this.availableVoices.length === 0) {
+            return null;
+        }
+
+        // 指定された言語の音声を探す
+        let voice = this.availableVoices.find(v => v.lang.startsWith(lang.split('-')[0]));
+        
+        // 見つからない場合は、デフォルト音声を使用
+        if (!voice) {
+            voice = this.availableVoices.find(v => v.default) || this.availableVoices[0];
+        }
+
+        return voice;
     }
 
     showSpeechFallback() {
