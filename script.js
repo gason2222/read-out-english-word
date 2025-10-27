@@ -41,7 +41,7 @@ class WordReader {
         this.stopBtn = document.getElementById('stopBtn');
         this.nextBtn = document.getElementById('nextBtn');
         
-        // MongoDB関連の要素
+        // MongoDB関連の要素（存在しない可能性があるため、安全に取得）
         this.databaseSection = document.getElementById('databaseSection');
         this.uploadToDbBtn = document.getElementById('uploadToDbBtn');
         this.loadFromDbBtn = document.getElementById('loadFromDbBtn');
@@ -49,7 +49,7 @@ class WordReader {
         this.dbStatusText = document.getElementById('dbStatusText');
         this.dbWordCount = document.getElementById('dbWordCount');
         
-        // 環境変数関連の要素
+        // 環境変数関連の要素（存在しない可能性があるため、安全に取得）
         this.saveConfigBtn = document.getElementById('saveConfigBtn');
         this.loadConfigBtn = document.getElementById('loadConfigBtn');
         this.resetConfigBtn = document.getElementById('resetConfigBtn');
@@ -60,45 +60,58 @@ class WordReader {
 
     checkElementExists() {
         const requiredElements = [
+            'csvFileInput', 'startBtn', 'pauseBtn', 'stopBtn', 'nextBtn',
             'uploadToDbBtn', 'loadFromDbBtn', 'deleteDbBtn',
             'saveConfigBtn', 'loadConfigBtn', 'resetConfigBtn'
         ];
         
+        const missingElements = [];
+        
         for (const elementId of requiredElements) {
             if (!this[elementId]) {
+                missingElements.push(elementId);
                 console.error(`Element not found: ${elementId}`);
             }
+        }
+        
+        if (missingElements.length > 0) {
+            console.error(`Missing elements: ${missingElements.join(', ')}`);
+            console.error('Some features may not work properly');
+        } else {
+            console.log('✅ All required elements found');
         }
     }
 
     bindEvents() {
+        // 基本要素の存在チェック
+        if (!this.csvFileInput) {
+            console.error('csvFileInput element not found');
+            return;
+        }
+        if (!this.startBtn) {
+            console.error('startBtn element not found');
+            return;
+        }
+        if (!this.pauseBtn) {
+            console.error('pauseBtn element not found');
+            return;
+        }
+        if (!this.stopBtn) {
+            console.error('stopBtn element not found');
+            return;
+        }
+        if (!this.nextBtn) {
+            console.error('nextBtn element not found');
+            return;
+        }
+
         this.csvFileInput.addEventListener('change', (e) => this.handleFileUpload(e));
         this.startBtn.addEventListener('click', () => this.startReading());
         this.pauseBtn.addEventListener('click', () => this.pauseReading());
         this.stopBtn.addEventListener('click', () => this.stopReading());
         this.nextBtn.addEventListener('click', () => this.nextWord());
         
-        // MongoDB関連のイベント
-        if (this.uploadToDbBtn) {
-            this.uploadToDbBtn.addEventListener('click', () => this.uploadToDatabase());
-        }
-        if (this.loadFromDbBtn) {
-            this.loadFromDbBtn.addEventListener('click', () => this.loadFromDatabase());
-        }
-        if (this.deleteDbBtn) {
-            this.deleteDbBtn.addEventListener('click', () => this.deleteAllFromDatabase());
-        }
-        
-        // 環境変数関連のイベント
-        if (this.saveConfigBtn) {
-            this.saveConfigBtn.addEventListener('click', () => this.saveConfiguration());
-        }
-        if (this.loadConfigBtn) {
-            this.loadConfigBtn.addEventListener('click', () => this.loadConfiguration());
-        }
-        if (this.resetConfigBtn) {
-            this.resetConfigBtn.addEventListener('click', () => this.resetConfiguration());
-        }
+        console.log('✅ Basic events bound successfully');
     }
 
     checkSpeechSupport() {
@@ -322,6 +335,51 @@ class WordReader {
         this.currentWord.style.display = 'block';
         this.wordList.style.display = 'block';
         this.databaseSection.style.display = 'block';
+        
+        // データベースセクションが表示された後、要素を再取得
+        setTimeout(() => {
+            this.uploadToDbBtn = document.getElementById('uploadToDbBtn');
+            this.loadFromDbBtn = document.getElementById('loadFromDbBtn');
+            this.deleteDbBtn = document.getElementById('deleteDbBtn');
+            this.saveConfigBtn = document.getElementById('saveConfigBtn');
+            this.loadConfigBtn = document.getElementById('loadConfigBtn');
+            this.resetConfigBtn = document.getElementById('resetConfigBtn');
+            
+            // イベントリスナーを再設定
+            this.bindDatabaseEvents();
+        }, 100);
+    }
+
+    bindDatabaseEvents() {
+        console.log('🔗 Binding database events...');
+        
+        // MongoDB関連のイベント
+        if (this.uploadToDbBtn) {
+            this.uploadToDbBtn.addEventListener('click', () => this.uploadToDatabase());
+            console.log('✅ uploadToDbBtn event bound');
+        }
+        if (this.loadFromDbBtn) {
+            this.loadFromDbBtn.addEventListener('click', () => this.loadFromDatabase());
+            console.log('✅ loadFromDbBtn event bound');
+        }
+        if (this.deleteDbBtn) {
+            this.deleteDbBtn.addEventListener('click', () => this.deleteAllFromDatabase());
+            console.log('✅ deleteDbBtn event bound');
+        }
+        
+        // 環境変数関連のイベント
+        if (this.saveConfigBtn) {
+            this.saveConfigBtn.addEventListener('click', () => this.saveConfiguration());
+            console.log('✅ saveConfigBtn event bound');
+        }
+        if (this.loadConfigBtn) {
+            this.loadConfigBtn.addEventListener('click', () => this.loadConfiguration());
+            console.log('✅ loadConfigBtn event bound');
+        }
+        if (this.resetConfigBtn) {
+            this.resetConfigBtn.addEventListener('click', () => this.resetConfiguration());
+            console.log('✅ resetConfigBtn event bound');
+        }
     }
 
     // 環境変数初期化
@@ -1493,5 +1551,13 @@ class WordReader {
 
 // アプリケーション初期化
 document.addEventListener('DOMContentLoaded', () => {
-    window.wordReader = new WordReader();
+    console.log('🚀 DOM Content Loaded - Initializing WordReader...');
+    
+    try {
+        window.wordReader = new WordReader();
+        console.log('✅ WordReader initialized successfully');
+    } catch (error) {
+        console.error('💥 Failed to initialize WordReader:', error);
+        console.error('Please check the console for missing elements or other issues');
+    }
 });
