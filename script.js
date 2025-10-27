@@ -50,7 +50,6 @@ class WordReader {
         this.dbWordCount = document.getElementById('dbWordCount');
         
         // 環境変数関連の要素
-        this.autoConnectCheckbox = document.getElementById('autoConnectCheckbox');
         this.saveConfigBtn = document.getElementById('saveConfigBtn');
         this.loadConfigBtn = document.getElementById('loadConfigBtn');
         this.resetConfigBtn = document.getElementById('resetConfigBtn');
@@ -62,7 +61,7 @@ class WordReader {
     checkElementExists() {
         const requiredElements = [
             'uploadToDbBtn', 'loadFromDbBtn', 'deleteDbBtn',
-            'autoConnectCheckbox', 'saveConfigBtn', 'loadConfigBtn', 'resetConfigBtn'
+            'saveConfigBtn', 'loadConfigBtn', 'resetConfigBtn'
         ];
         
         for (const elementId of requiredElements) {
@@ -99,9 +98,6 @@ class WordReader {
         }
         if (this.resetConfigBtn) {
             this.resetConfigBtn.addEventListener('click', () => this.resetConfiguration());
-        }
-        if (this.autoConnectCheckbox) {
-            this.autoConnectCheckbox.addEventListener('change', () => this.toggleAutoConnect());
         }
     }
 
@@ -260,16 +256,30 @@ class WordReader {
             return;
         }
 
+        console.log('📁 CSV file upload started:', file.name);
+
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
+                console.log('📖 Parsing CSV file...');
                 this.parseCSV(e.target.result);
+                console.log(`✅ CSV parsed successfully: ${this.words.length} words loaded`);
+                
                 this.displayFileInfo(file.name);
                 this.showControls();
                 this.displayWordList();
+                
+                // MongoDBに接続されている場合、自動的にDBに登録
+                if (this.isMongoConnected) {
+                    console.log('🗄️ MongoDB connected, auto-registering words to database...');
+                    await this.autoRegisterToDatabase();
+                } else {
+                    console.log('⚠️ MongoDB not connected, skipping auto-registration');
+                    this.showDatabaseMessage('MongoDBに接続されていません。手動でDBに登録してください。', 'warning');
+                }
             } catch (error) {
+                console.error('💥 CSV parsing error:', error);
                 alert('CSVファイルの読み込みに失敗しました。ファイル形式を確認してください。');
-                console.error('CSV parsing error:', error);
             }
         };
         reader.readAsText(file, 'UTF-8');
@@ -316,42 +326,28 @@ class WordReader {
 
     // 環境変数初期化
     initializeEnvironment() {
+        console.log('🔧 Environment initialization started');
+        
         // 保存された設定を読み込み
         this.loadConfiguration();
         
-        // 自動接続が有効で接続文字列がある場合、自動接続を試行
-        if (this.envManager.getAutoConnect()) {
-            if (this.envManager.hasConnectionString()) {
-                setTimeout(() => {
-                    this.autoConnectToMongoDB();
-                }, 1000);
-            } else if (this.envManager.hasDataApiConfig()) {
-                setTimeout(() => {
-                    this.autoConnectWithDataAPI();
-                }, 1000);
-            }
-        }
+        // アプリ起動時に自動的にMongoDBに接続を試行
+        setTimeout(() => {
+            this.autoConnectToMongoDB();
+        }, 1000);
+        
+        console.log('🔧 Environment initialization completed');
     }
 
     // 設定保存
     saveConfiguration() {
-        if (!this.autoConnectCheckbox) return;
-        
-        const autoConnect = this.autoConnectCheckbox.checked;
-        
-        this.envManager.setAutoConnect(autoConnect);
-        
+        console.log('💾 Configuration save requested');
         this.showDatabaseSuccess('設定を保存しました');
     }
 
     // 設定読み込み
     loadConfiguration() {
-        const autoConnect = this.envManager.getAutoConnect();
-        
-        if (this.autoConnectCheckbox) {
-            this.autoConnectCheckbox.checked = autoConnect;
-        }
-        
+        console.log('📖 Configuration load requested');
         this.showDatabaseSuccess('設定を読み込みました');
     }
 
@@ -361,10 +357,8 @@ class WordReader {
             return;
         }
         
+        console.log('🔄 Configuration reset requested');
         this.envManager.reset();
-        if (this.autoConnectCheckbox) {
-            this.autoConnectCheckbox.checked = false;
-        }
         
         // MongoDB接続も切断
         if (this.isMongoConnected) {
@@ -374,26 +368,17 @@ class WordReader {
         this.showDatabaseSuccess('設定をリセットしました');
     }
 
-    // 自動接続の切り替え
-    toggleAutoConnect() {
-        if (!this.autoConnectCheckbox) return;
-        
-        const autoConnect = this.autoConnectCheckbox.checked;
-        this.envManager.setAutoConnect(autoConnect);
-        
-        if (autoConnect) {
-            this.showDatabaseSuccess('自動接続が有効になりました');
-        } else {
-            this.showDatabaseSuccess('自動接続が無効になりました');
-        }
-    }
-
     // 自動接続
     async autoConnectToMongoDB() {
+        console.log('🔌 Auto-connecting to MongoDB Atlas...');
+        
         const connectionString = this.envManager.getConnectionString();
         if (!connectionString) {
+            console.log('❌ No MongoDB connection string found in environment variables');
             return;
         }
+        
+        console.log('🔗 Connection string found, attempting connection...');
         
         try {
             const success = await this.mongoManager.connect(connectionString);
@@ -403,22 +388,38 @@ class WordReader {
                 this.updateDatabaseStatus(true);
                 this.updateDatabaseButtons();
                 await this.updateWordCount();
+                console.log('✅ MongoDB Atlas connection successful (Driver)');
                 this.showDatabaseSuccess('MongoDB Atlasに自動接続しました');
+            } else {
+                console.log('❌ MongoDB Atlas connection failed');
             }
         } catch (error) {
-            console.warn('自動接続に失敗:', error);
+            console.error('💥 MongoDB connection error:', error);
+            console.warn('🔄 Attempting Data API fallback...');
+            
+            // Data APIを試行
+            if (this.envManager.hasDataApiConfig()) {
+                const apiKey = this.envManager.getDataApiKey();
+                const clusterName = this.envManager.getClusterName();
+                await this.autoConnectWithDataAPI();
+            }
         }
     }
 
     // Data API自動接続
     async autoConnectWithDataAPI() {
+        console.log('🔌 Auto-connecting to MongoDB Atlas Data API...');
+        
         const apiKey = this.envManager.getDataApiKey();
         const clusterName = this.envManager.getClusterName();
         
         if (!apiKey || !clusterName) {
+            console.log('❌ No Data API configuration found');
             return;
         }
-
+        
+        console.log('🔗 Data API configuration found, attempting connection...');
+        
         try {
             await this.dataAPIManager.connect(apiKey, clusterName);
             this.isMongoConnected = true;
@@ -426,9 +427,11 @@ class WordReader {
             this.updateDatabaseStatus(true);
             this.updateDatabaseButtons();
             await this.updateWordCount();
+            console.log('✅ MongoDB Atlas Data API connection successful');
             this.showDatabaseSuccess('MongoDB Atlas Data APIに自動接続しました');
         } catch (error) {
-            console.warn('Data API自動接続に失敗:', error);
+            console.error('💥 Data API connection error:', error);
+            console.warn('🔄 Data API auto-connection failed:', error);
         }
     }
 
@@ -445,16 +448,62 @@ class WordReader {
         }
     }
 
-    async uploadToDatabase() {
+    // CSVアップロード時の自動DB登録
+    async autoRegisterToDatabase() {
+        console.log('🚀 Starting auto-registration to database...');
+        
         if (!this.isMongoConnected) {
+            console.log('❌ MongoDB not connected, cannot auto-register');
+            this.showDatabaseMessage('MongoDBに接続されていません。', 'error');
+            return;
+        }
+        
+        if (!this.words || this.words.length === 0) {
+            console.log('❌ No words to register');
+            this.showDatabaseMessage('登録する単語がありません。', 'error');
+            return;
+        }
+        
+        console.log(`📊 Registering ${this.words.length} words to database...`);
+        
+        try {
+            let registeredCount = 0;
+            
+            if (this.useDataAPI) {
+                console.log('🔗 Using Data API for registration...');
+                const csvData = this.words.map(word => `${word.english},${word.japanese}`).join('\n');
+                registeredCount = await this.dataAPIManager.uploadWordsFromCSV(csvData);
+            } else {
+                console.log('🔗 Using MongoDB Driver for registration...');
+                registeredCount = await this.mongoManager.uploadWordsFromCSV(this.words);
+            }
+            
+            console.log(`✅ Auto-registration completed: ${registeredCount} words registered`);
+            await this.updateWordCount();
+            this.showDatabaseSuccess(`${registeredCount}件の単語をデータベースに自動登録しました`);
+            
+        } catch (error) {
+            console.error('💥 Auto-registration failed:', error);
+            this.showDatabaseError(`自動登録に失敗しました: ${error.message}`);
+        }
+    }
+
+    async uploadToDatabase() {
+        console.log('📤 Manual upload to database requested');
+        
+        if (!this.isMongoConnected) {
+            console.log('❌ MongoDB not connected');
             alert('MongoDB Atlasに接続してください');
             return;
         }
 
         if (this.words.length === 0) {
+            console.log('❌ No words to upload');
             alert('CSVファイルを先に読み込んでください');
             return;
         }
+
+        console.log(`📊 Uploading ${this.words.length} words to database...`);
 
         this.uploadToDbBtn.disabled = true;
         this.uploadToDbBtn.textContent = '登録中...';
@@ -465,13 +514,18 @@ class WordReader {
             
             let count;
             if (this.useDataAPI) {
+                console.log('🔗 Using Data API for upload...');
                 count = await this.dataAPIManager.uploadWordsFromCSV(csvData);
             } else {
+                console.log('🔗 Using MongoDB Driver for upload...');
                 count = await this.mongoManager.uploadWordsFromCSV(csvData);
             }
+            
+            console.log(`✅ Upload completed: ${count} words uploaded`);
             await this.updateWordCount();
             this.showDatabaseSuccess(`${count}個の単語をデータベースに登録しました`);
         } catch (error) {
+            console.error('💥 Upload failed:', error);
             this.showDatabaseError(`登録エラー: ${error.message}`);
         } finally {
             this.uploadToDbBtn.disabled = false;
@@ -480,7 +534,10 @@ class WordReader {
     }
 
     async loadFromDatabase() {
+        console.log('📥 Loading words from database...');
+        
         if (!this.isMongoConnected) {
+            console.log('❌ MongoDB not connected');
             alert('MongoDB Atlasに接続してください');
             return;
         }
@@ -491,12 +548,15 @@ class WordReader {
         try {
             let dbWords;
             if (this.useDataAPI) {
+                console.log('🔗 Using Data API for loading...');
                 dbWords = await this.dataAPIManager.getAllWords();
             } else {
+                console.log('🔗 Using MongoDB Driver for loading...');
                 dbWords = await this.mongoManager.getAllWords();
             }
             
             if (dbWords.length === 0) {
+                console.log('⚠️ No words found in database');
                 this.showDatabaseError('データベースに単語がありません');
                 return;
             }
@@ -507,11 +567,14 @@ class WordReader {
                 japanese: word.japanese
             }));
 
+            console.log(`✅ Load completed: ${this.words.length} words loaded from database`);
+            
             this.displayFileInfo('データベース', this.words.length);
             this.showControls();
             this.displayWordList();
             this.showDatabaseSuccess(`${this.words.length}個の単語をデータベースから読み込みました`);
         } catch (error) {
+            console.error('💥 Load failed:', error);
             this.showDatabaseError(`読み込みエラー: ${error.message}`);
         } finally {
             this.loadFromDbBtn.disabled = false;
@@ -520,12 +583,16 @@ class WordReader {
     }
 
     async deleteAllFromDatabase() {
+        console.log('🗑️ Deleting all words from database...');
+        
         if (!this.isMongoConnected) {
+            console.log('❌ MongoDB not connected');
             alert('MongoDB Atlasに接続してください');
             return;
         }
 
         if (!confirm('データベースのすべての単語を削除しますか？この操作は元に戻せません。')) {
+            console.log('❌ Delete operation cancelled by user');
             return;
         }
 
@@ -533,10 +600,20 @@ class WordReader {
         this.deleteDbBtn.textContent = '削除中...';
 
         try {
-            const count = await this.mongoManager.deleteAllWords();
+            let deletedCount;
+            if (this.useDataAPI) {
+                console.log('🔗 Using Data API for deletion...');
+                deletedCount = await this.dataAPIManager.deleteAllWords();
+            } else {
+                console.log('🔗 Using MongoDB Driver for deletion...');
+                deletedCount = await this.mongoManager.deleteAllWords();
+            }
+            
+            console.log(`✅ Delete completed: ${deletedCount} words deleted from database`);
             await this.updateWordCount();
-            this.showDatabaseSuccess(`${count}個の単語を削除しました`);
+            this.showDatabaseSuccess(`${deletedCount}個の単語を削除しました`);
         } catch (error) {
+            console.error('💥 Delete failed:', error);
             this.showDatabaseError(`削除エラー: ${error.message}`);
         } finally {
             this.deleteDbBtn.disabled = false;
