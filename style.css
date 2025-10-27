@@ -260,22 +260,6 @@ main {
     gap: 15px;
 }
 
-.connection-controls {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.connection-input {
-    flex: 1;
-    min-width: 300px;
-    padding: 10px;
-    border: 1px solid #ced4da;
-    border-radius: 5px;
-    font-size: 14px;
-}
-
 .env-controls {
     display: flex;
     gap: 10px;
@@ -490,12 +474,9 @@ main {
 }
 
 @media (max-width: 600px) {
-    .connection-controls {
+    .env-controls {
         flex-direction: column;
-    }
-    
-    .connection-input {
-        min-width: 100%;
+        align-items: center;
     }
     
     .db-controls {

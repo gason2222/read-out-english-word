@@ -43,9 +43,6 @@ class WordReader {
         
         // MongoDB関連の要素
         this.databaseSection = document.getElementById('databaseSection');
-        this.mongoConnectionString = document.getElementById('mongoConnectionString');
-        this.connectBtn = document.getElementById('connectBtn');
-        this.disconnectBtn = document.getElementById('disconnectBtn');
         this.uploadToDbBtn = document.getElementById('uploadToDbBtn');
         this.loadFromDbBtn = document.getElementById('loadFromDbBtn');
         this.deleteDbBtn = document.getElementById('deleteDbBtn');
@@ -67,8 +64,6 @@ class WordReader {
         this.nextBtn.addEventListener('click', () => this.nextWord());
         
         // MongoDB関連のイベント
-        this.connectBtn.addEventListener('click', () => this.connectToMongoDB());
-        this.disconnectBtn.addEventListener('click', () => this.disconnectFromMongoDB());
         this.uploadToDbBtn.addEventListener('click', () => this.uploadToDatabase());
         this.loadFromDbBtn.addEventListener('click', () => this.loadFromDatabase());
         this.deleteDbBtn.addEventListener('click', () => this.deleteAllFromDatabase());
@@ -310,10 +305,8 @@ class WordReader {
 
     // 設定保存
     saveConfiguration() {
-        const connectionString = this.mongoConnectionString.value.trim();
         const autoConnect = this.autoConnectCheckbox.checked;
         
-        this.envManager.setConnectionString(connectionString);
         this.envManager.setAutoConnect(autoConnect);
         
         this.showDatabaseSuccess('設定を保存しました');
@@ -321,15 +314,11 @@ class WordReader {
 
     // 設定読み込み
     loadConfiguration() {
-        const connectionString = this.envManager.getConnectionString();
         const autoConnect = this.envManager.getAutoConnect();
         
-        this.mongoConnectionString.value = connectionString;
         this.autoConnectCheckbox.checked = autoConnect;
         
-        if (connectionString) {
-            this.showDatabaseSuccess('設定を読み込みました');
-        }
+        this.showDatabaseSuccess('設定を読み込みました');
     }
 
     // 設定リセット
@@ -339,7 +328,6 @@ class WordReader {
         }
         
         this.envManager.reset();
-        this.mongoConnectionString.value = '';
         this.autoConnectCheckbox.checked = false;
         
         // MongoDB接続も切断
@@ -368,8 +356,6 @@ class WordReader {
         if (!connectionString) {
             return;
         }
-
-        this.mongoConnectionString.value = connectionString;
         
         try {
             const success = await this.mongoManager.connect(connectionString);
@@ -409,55 +395,6 @@ class WordReader {
     }
 
     // MongoDB操作メソッド
-    async connectToMongoDB() {
-        const connectionString = this.mongoConnectionString.value.trim();
-        if (!connectionString) {
-            alert('MongoDB Atlas接続文字列を入力してください');
-            return;
-        }
-
-        this.connectBtn.disabled = true;
-        this.connectBtn.textContent = '接続中...';
-
-        try {
-            // まず通常のMongoDBドライバーで接続を試行
-            const success = await this.mongoManager.connect(connectionString);
-            if (success) {
-                this.isMongoConnected = true;
-                this.useDataAPI = false;
-                this.updateDatabaseStatus(true);
-                this.updateDatabaseButtons();
-                await this.updateWordCount();
-                this.showDatabaseSuccess('MongoDB Atlasに接続しました（ドライバー使用）');
-            } else {
-                this.showDatabaseError('MongoDB Atlasへの接続に失敗しました');
-            }
-        } catch (error) {
-            console.error('MongoDB接続エラー:', error);
-            
-            // ドライバー読み込みエラーの場合、Data APIを試行
-            if (error.message.includes('driver') || error.message.includes('CDN')) {
-                this.showDriverErrorWithDataAPIOption();
-            } else {
-                // より詳細なエラーメッセージを表示
-                let errorMessage = 'MongoDB Atlasへの接続に失敗しました';
-                
-                if (error.message.includes('connection')) {
-                    errorMessage = 'MongoDB Atlasへの接続に失敗しました。接続文字列とネットワーク設定を確認してください。';
-                } else if (error.message.includes('authentication')) {
-                    errorMessage = '認証に失敗しました。ユーザー名とパスワードを確認してください。';
-                } else if (error.message.includes('network')) {
-                    errorMessage = 'ネットワークエラーが発生しました。インターネット接続を確認してください。';
-                }
-                
-                this.showDatabaseError(errorMessage);
-            }
-        } finally {
-            this.connectBtn.disabled = false;
-            this.connectBtn.textContent = '接続';
-        }
-    }
-
     async disconnectFromMongoDB() {
         try {
             await this.mongoManager.disconnect();
@@ -583,8 +520,6 @@ class WordReader {
 
     updateDatabaseButtons() {
         const connected = this.isMongoConnected;
-        this.connectBtn.disabled = connected;
-        this.disconnectBtn.disabled = !connected;
         this.uploadToDbBtn.disabled = !connected;
         this.loadFromDbBtn.disabled = !connected;
         this.deleteDbBtn.disabled = !connected;
@@ -676,9 +611,6 @@ class WordReader {
     }
 
     async connectWithDataAPI(apiKey, clusterName) {
-        this.connectBtn.disabled = true;
-        this.connectBtn.textContent = 'Data API接続中...';
-
         try {
             await this.dataAPIManager.connect(apiKey, clusterName);
             this.isMongoConnected = true;
@@ -690,9 +622,6 @@ class WordReader {
         } catch (error) {
             console.error('Data API接続エラー:', error);
             this.showDatabaseError(`Data API接続エラー: ${error.message}`);
-        } finally {
-            this.connectBtn.disabled = false;
-            this.connectBtn.textContent = '接続';
         }
     }
 
