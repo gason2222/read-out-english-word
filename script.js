@@ -54,6 +54,22 @@ class WordReader {
         this.saveConfigBtn = document.getElementById('saveConfigBtn');
         this.loadConfigBtn = document.getElementById('loadConfigBtn');
         this.resetConfigBtn = document.getElementById('resetConfigBtn');
+        
+        // 要素の存在チェック
+        this.checkElementExists();
+    }
+
+    checkElementExists() {
+        const requiredElements = [
+            'uploadToDbBtn', 'loadFromDbBtn', 'deleteDbBtn',
+            'autoConnectCheckbox', 'saveConfigBtn', 'loadConfigBtn', 'resetConfigBtn'
+        ];
+        
+        for (const elementId of requiredElements) {
+            if (!this[elementId]) {
+                console.error(`Element not found: ${elementId}`);
+            }
+        }
     }
 
     bindEvents() {
@@ -64,15 +80,29 @@ class WordReader {
         this.nextBtn.addEventListener('click', () => this.nextWord());
         
         // MongoDB関連のイベント
-        this.uploadToDbBtn.addEventListener('click', () => this.uploadToDatabase());
-        this.loadFromDbBtn.addEventListener('click', () => this.loadFromDatabase());
-        this.deleteDbBtn.addEventListener('click', () => this.deleteAllFromDatabase());
+        if (this.uploadToDbBtn) {
+            this.uploadToDbBtn.addEventListener('click', () => this.uploadToDatabase());
+        }
+        if (this.loadFromDbBtn) {
+            this.loadFromDbBtn.addEventListener('click', () => this.loadFromDatabase());
+        }
+        if (this.deleteDbBtn) {
+            this.deleteDbBtn.addEventListener('click', () => this.deleteAllFromDatabase());
+        }
         
         // 環境変数関連のイベント
-        this.saveConfigBtn.addEventListener('click', () => this.saveConfiguration());
-        this.loadConfigBtn.addEventListener('click', () => this.loadConfiguration());
-        this.resetConfigBtn.addEventListener('click', () => this.resetConfiguration());
-        this.autoConnectCheckbox.addEventListener('change', () => this.toggleAutoConnect());
+        if (this.saveConfigBtn) {
+            this.saveConfigBtn.addEventListener('click', () => this.saveConfiguration());
+        }
+        if (this.loadConfigBtn) {
+            this.loadConfigBtn.addEventListener('click', () => this.loadConfiguration());
+        }
+        if (this.resetConfigBtn) {
+            this.resetConfigBtn.addEventListener('click', () => this.resetConfiguration());
+        }
+        if (this.autoConnectCheckbox) {
+            this.autoConnectCheckbox.addEventListener('change', () => this.toggleAutoConnect());
+        }
     }
 
     checkSpeechSupport() {
@@ -305,6 +335,8 @@ class WordReader {
 
     // 設定保存
     saveConfiguration() {
+        if (!this.autoConnectCheckbox) return;
+        
         const autoConnect = this.autoConnectCheckbox.checked;
         
         this.envManager.setAutoConnect(autoConnect);
@@ -316,7 +348,9 @@ class WordReader {
     loadConfiguration() {
         const autoConnect = this.envManager.getAutoConnect();
         
-        this.autoConnectCheckbox.checked = autoConnect;
+        if (this.autoConnectCheckbox) {
+            this.autoConnectCheckbox.checked = autoConnect;
+        }
         
         this.showDatabaseSuccess('設定を読み込みました');
     }
@@ -328,7 +362,9 @@ class WordReader {
         }
         
         this.envManager.reset();
-        this.autoConnectCheckbox.checked = false;
+        if (this.autoConnectCheckbox) {
+            this.autoConnectCheckbox.checked = false;
+        }
         
         // MongoDB接続も切断
         if (this.isMongoConnected) {
@@ -340,6 +376,8 @@ class WordReader {
 
     // 自動接続の切り替え
     toggleAutoConnect() {
+        if (!this.autoConnectCheckbox) return;
+        
         const autoConnect = this.autoConnectCheckbox.checked;
         this.envManager.setAutoConnect(autoConnect);
         
@@ -520,9 +558,9 @@ class WordReader {
 
     updateDatabaseButtons() {
         const connected = this.isMongoConnected;
-        this.uploadToDbBtn.disabled = !connected;
-        this.loadFromDbBtn.disabled = !connected;
-        this.deleteDbBtn.disabled = !connected;
+        if (this.uploadToDbBtn) this.uploadToDbBtn.disabled = !connected;
+        if (this.loadFromDbBtn) this.loadFromDbBtn.disabled = !connected;
+        if (this.deleteDbBtn) this.deleteDbBtn.disabled = !connected;
     }
 
     async updateWordCount() {
